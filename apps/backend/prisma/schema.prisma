@@ -1,0 +1,275 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ContentType {
+  QUOTE
+  MUSIC
+  BOOK
+  MOVIE
+  HISTORICAL_FACT
+  SCIENTIFIC_FACT
+}
+
+enum TaskCategory {
+  FOR_WORLD
+  FOR_SELF
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  SKIPPED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum AssistantProvider {
+  OPENAI
+  CLAUDE
+  GEMINI
+}
+
+enum MoodType {
+  HAPPY
+  SAD
+  ANXIOUS
+  CALM
+  EXCITED
+}
+
+// ─── Core ─────────────────────────────────────────────────
+
+model User {
+  id                String    @id @default(uuid())
+  username          String    @unique
+  firstName         String?
+  lastName          String?
+  email             String    @unique
+  emailVerified     Boolean   @default(false)
+  passwordHash      String?
+  avatarUrl         String?
+  phoneNumber       String?
+  role              UserRole  @default(USER)
+  onboardingShownAt DateTime? // для 5-day cooldown
+  lastSeenAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  settings            Settings?
+  sessions            Session[]
+  anonymousSession    AnonymousSession?
+  oauthAccounts       OauthAccount[]
+  webAuthnCredentials WebAuthnCredential[]
+  webAuthnChallenges  WebAuthnChallenge[]
+  moodEntries         MoodEntry[]
+  generatedContents   GeneratedContent[]
+  tasks               Task[]
+  favorites           Favorite[]
+  chatSessions        ChatSession[]
+}
+
+model Settings {
+  id                   String            @id @default(uuid())
+  userId               String            @unique
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme                String            @default("light")
+  language             String            @default("en")
+  assistantId          AssistantProvider @default(OPENAI)
+  location             String?
+  notificationsEnabled Boolean           @default(false)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}
+
+// ─── Auth ─────────────────────────────────────────────────
+
+model Session {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String
+  deviceInfo       Json?
+  ipAddress        String?
+  revoked          Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  lastSeenAt       DateTime @default(now())
+  expireAt         DateTime @default(dbgenerated("CURRENT_TIMESTAMP + INTERVAL '30 days'"))
+
+  @@index([userId])
+  @@index([expireAt])
+}
+
+model AnonymousSession {
+  id               String    @id @default(uuid())
+  deviceId         String    @unique
+  userId           String?   @unique // nullable — до реєстрації
+  user             User?     @relation(fields: [userId], references: [id])
+  popupDismissedAt DateTime?
+  popupNextShowAt  DateTime?
+  createdAt        DateTime  @default(now())
+  lastSeenAt       DateTime  @default(now())
+  expireAt         DateTime  @default(dbgenerated("CURRENT_TIMESTAMP + INTERVAL '30 days'"))
+}
+
+model OauthAccount {
+  id                String  @id @default(uuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         Int?
+  tokenType         String?
+
+  @@unique([provider, providerAccountId])
+  @@unique([userId, provider])
+}
+
+model WebAuthnCredential {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String   @unique
+  publicKey    String
+  signCount    Int      @default(0)
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model WebAuthnChallenge {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  challenge String
+  createdAt DateTime @default(now())
+  expireAt  DateTime @default(dbgenerated("CURRENT_TIMESTAMP + INTERVAL '5 minutes'"))
+
+  @@index([userId, expireAt])
+}
+
+// ─── Mood & Content ───────────────────────────────────────
+
+model MoodEntry {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mood      MoodType
+  intensity Int? // 1–10
+  emoji     String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  generatedContents GeneratedContent[]
+  tasks             Task[]
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model GeneratedContent {
+  id           String      @id @default(uuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moodEntryId  String?
+  moodEntry    MoodEntry?  @relation(fields: [moodEntryId], references: [id])
+  type         ContentType
+  content      Json
+  languageCode String
+  providerId   String
+  createdAt    DateTime    @default(now())
+
+  favorites Favorite[]
+
+  @@index([userId, type, createdAt(sort: Desc)])
+  @@index([moodEntryId])
+}
+
+// ─── Tasks ────────────────────────────────────────────────
+
+model Task {
+  id           String       @id @default(uuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moodEntryId  String?
+  moodEntry    MoodEntry?   @relation(fields: [moodEntryId], references: [id])
+  category     TaskCategory
+  title        String
+  description  String?
+  status       TaskStatus   @default(PENDING)
+  languageCode String       @default("en")
+  dueDate      DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([userId, status, category])
+}
+
+// ─── Favorites ────────────────────────────────────────────
+
+model Favorite {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId String
+  content   GeneratedContent @relation(fields: [contentId], references: [id])
+  createdAt DateTime         @default(now())
+
+  @@unique([userId, contentId]) // не можна зберегти двічі
+  @@index([userId])
+}
+
+// ─── Chat ─────────────────────────────────────────────────
+
+model ChatSession {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId String
+  title      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  messages ChatMessage[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model ChatMessage {
+  id            String      @id @default(uuid())
+  chatSessionId String
+  chatSession   ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  role          MessageRole
+  content       String // plain text
+  metadata      Json? // { tokensUsed, modelVersion }
+  createdAt     DateTime    @default(now())
+
+  @@index([chatSessionId, createdAt])
+}
