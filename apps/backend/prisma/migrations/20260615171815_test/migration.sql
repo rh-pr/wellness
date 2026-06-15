@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "AnonymousSession" ALTER COLUMN "expireAt" SET DEFAULT CURRENT_TIMESTAMP + INTERVAL '30 days';
+
+-- AlterTable
+ALTER TABLE "Session" ALTER COLUMN "expireAt" SET DEFAULT CURRENT_TIMESTAMP + INTERVAL '30 days';
+
+-- AlterTable
+ALTER TABLE "WebAuthnChallenge" ALTER COLUMN "expireAt" SET DEFAULT CURRENT_TIMESTAMP + INTERVAL '5 minutes';
