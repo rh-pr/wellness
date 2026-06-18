@@ -1,2 +1,0 @@
-import { PrismaClient, User } from '../../generated/prisma/client';
-export declare function seedChat(prisma: PrismaClient, users: User[]): Promise<void>;
