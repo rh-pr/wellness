@@ -49,7 +49,6 @@ async function main() {
 
   await seedChat(prisma, users);
 
-  console.log(users.length)
   console.log('Done');
 }
 

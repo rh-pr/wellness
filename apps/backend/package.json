@@ -23,6 +23,7 @@
   "dependencies": {
     "@faker-js/faker": "^9.9.0",
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/client": "^6.19.3",
@@ -70,6 +71,9 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^\\.\\/(.*)\\.js$": "./$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
