@@ -174,7 +174,6 @@ type User {
 }
 
 type Query {
-  users: [User!]!
   auth(id: Int!): Session!
   mood(id: Int!): Mood!
   task(id: Int!): Task!
@@ -194,8 +193,23 @@ type Mutation {
 }
 
 input CreateUserInput {
-  """Example field (placeholder)"""
-  exampleField: Int!
+  username: String!
+  password: String!
+  firstName: String
+  lastName: String
+  email: String!
+  avatarUrl: String
+  phoneNumber: String
+  settings: CreateSettingsInput
+}
+
+input CreateSettingsInput {
+  userId: String!
+  thema: String
+  language: String
+  assistantId: String
+  location: String
+  notificationsEnabled: Boolean! = false
 }
 
 input CreateAuthInput {

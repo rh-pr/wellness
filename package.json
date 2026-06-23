@@ -2,12 +2,16 @@
   "name": "wellness",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "concurrently \"npm --prefix apps/frontend run dev\" \"npm --prefix apps/backend run start:dev\""
+    "dev": "concurrently \"npm --prefix apps/frontend run dev\" \"npm --prefix apps/backend run start:dev\"",
+    "build": "npm run build --workspaces --if-present"
   },
   "keywords": [],
-  "author": "",
+  "author": "RH",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {

@@ -11,9 +11,4 @@ export class UserResolver {
   createUser(@Args('createUserInput') createUserInput: CreateUserInput) {
     return this.userService.create(createUserInput);
   }
-
-  @Query(() => [User], { name: 'users' })
-  findAll() {
-    return this.userService.findAll();
-  }
 }
